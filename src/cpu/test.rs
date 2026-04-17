@@ -225,3 +225,35 @@ fn test_0x84_sty_zero_page() {
     cpu.load_and_run(vec![0xA0, 0x55, 0x84, 0x10, 0x00]);
     assert_eq!(cpu.memory.read(0x10), 0x55);
 }
+
+#[test]
+#[allow(non_snake_case)]
+fn test_0xAA_tax() {
+    let mut cpu = CPU::new();
+    cpu.load_and_run(vec![0xA9, 0x55, 0xAA, 0x00]);
+    assert_eq!(cpu.index_x, 0x55);
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_0x8A_txa() {
+    let mut cpu = CPU::new();
+    cpu.load_and_run(vec![0xA2, 0x55, 0x8A, 0x00]);
+    assert_eq!(cpu.accumulator, 0x55);
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_0xA8_tay() {
+    let mut cpu = CPU::new();
+    cpu.load_and_run(vec![0xA9, 0x55, 0xA8, 0x00]);
+    assert_eq!(cpu.index_y, 0x55);
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_0x98_tya() {
+    let mut cpu = CPU::new();
+    cpu.load_and_run(vec![0xA0, 0x55, 0x98, 0x00]);
+    assert_eq!(cpu.accumulator, 0x55);
+}

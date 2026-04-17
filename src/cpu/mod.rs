@@ -183,6 +183,10 @@ impl CPU {
                 0x86 | 0x96 | 0x8E => self.stx(&instruction.addressing_mode),
                 0xA0 | 0xA4 | 0xB4 | 0xAC | 0xBC => self.ldy(&instruction.addressing_mode),
                 0x84 | 0x94 | 0x8C => self.sty(&instruction.addressing_mode),
+                0xAA => self.tax(),
+                0x8A => self.txa(),
+                0xA8 => self.tay(),
+                0x98 => self.tya(),
                 0x00 => return,
                 _ => {
                     panic!("instruction {:#04x} unkown", opcode)
@@ -247,5 +251,33 @@ impl CPU {
     fn sty(&mut self, addressing_mode: &AddressingMode) {
         let addr = self.get_memory_address(addressing_mode);
         self.memory.write(addr, self.index_y);
+    }
+
+    fn tax(&mut self) {
+        self.index_x = self.accumulator;
+
+        self.update_zero_flag(self.index_x);
+        self.update_negative_flag(self.index_x);
+    }
+
+    fn txa(&mut self) {
+        self.accumulator = self.index_x;
+
+        self.update_zero_flag(self.accumulator);
+        self.update_negative_flag(self.accumulator);
+    }
+
+    fn tay(&mut self) {
+        self.index_y = self.accumulator;
+
+        self.update_zero_flag(self.index_y);
+        self.update_negative_flag(self.index_y);
+    }
+
+    fn tya(&mut self) {
+        self.accumulator = self.index_y;
+
+        self.update_zero_flag(self.accumulator);
+        self.update_negative_flag(self.accumulator);
     }
 }
