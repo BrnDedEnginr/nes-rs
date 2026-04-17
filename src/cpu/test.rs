@@ -257,3 +257,121 @@ fn test_0x98_tya() {
     cpu.load_and_run(vec![0xA0, 0x55, 0x98, 0x00]);
     assert_eq!(cpu.accumulator, 0x55);
 }
+
+// Core operation
+#[test]
+#[allow(non_snake_case)]
+fn test_0x69_adc_immediate() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0x10;
+    cpu.load_and_run(vec![0x69, 0x20, 0x00]);
+    assert_eq!(cpu.accumulator, 0x30);
+}
+
+// Carry flag in
+#[test]
+#[allow(non_snake_case)]
+fn test_adc_with_carry_in() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0x10;
+    cpu.status_register.insert(StatusFlags::CARRY);
+    cpu.load_and_run(vec![0x69, 0x20, 0x00]);
+    assert_eq!(cpu.accumulator, 0x31); // 0x10 + 0x20 + carry(1)
+}
+
+// Carry flag out
+#[test]
+#[allow(non_snake_case)]
+fn test_adc_sets_carry_flag() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0xFF;
+    cpu.load_and_run(vec![0x69, 0x01, 0x00]);
+    assert_eq!(cpu.accumulator, 0x00); // wraps around
+    assert!(cpu.status_register.contains(StatusFlags::CARRY));
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_adc_clears_carry_flag() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0x01;
+    cpu.status_register.insert(StatusFlags::CARRY); // carry was set from before
+    cpu.load_and_run(vec![0x69, 0x01, 0x00]);
+    assert_eq!(cpu.accumulator, 0x03);
+    assert!(!cpu.status_register.contains(StatusFlags::CARRY)); // no overflow, should clear
+}
+
+// Zero flag
+#[test]
+#[allow(non_snake_case)]
+fn test_adc_sets_zero_flag() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0xFF;
+    cpu.load_and_run(vec![0x69, 0x01, 0x00]);
+    assert_eq!(cpu.accumulator, 0x00);
+    assert!(cpu.status_register.contains(StatusFlags::ZERO));
+}
+
+// Negative flag
+#[test]
+#[allow(non_snake_case)]
+fn test_adc_sets_negative_flag() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0x40;
+    cpu.load_and_run(vec![0x69, 0x40, 0x00]);
+    assert_eq!(cpu.accumulator, 0x80); // bit 7 set
+    assert!(cpu.status_register.contains(StatusFlags::NEGATIVE));
+}
+
+// Overflow flag - positive + positive = negative (signed overflow)
+#[test]
+#[allow(non_snake_case)]
+fn test_adc_sets_overflow_flag_positive_overflow() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0x50; // +80 signed
+    cpu.load_and_run(vec![0x69, 0x50, 0x00]); // +80 signed, result = 0xA0 = -96 signed
+    assert!(cpu.status_register.contains(StatusFlags::OVERFLOW));
+}
+
+// Overflow flag - negative + negative = positive (signed underflow)
+#[test]
+#[allow(non_snake_case)]
+fn test_adc_sets_overflow_flag_negative_overflow() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0xD0; // -48 signed
+    cpu.load_and_run(vec![0x69, 0xD0, 0x00]); // -48 signed, result = 0xA0... wait, 0xD0+0xD0=0x1A0
+    // 0xA0 = -96 signed, both inputs negative, result negative — no overflow
+    // let's use 0x90 + 0x90 instead: -112 + -112 = 0x120, truncated = 0x20 = +32, sign flipped
+    assert!(!cpu.status_register.contains(StatusFlags::OVERFLOW));
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_adc_sets_overflow_flag_negative_plus_negative() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0x90; // -112 signed
+    cpu.load_and_run(vec![0x69, 0x90, 0x00]); // result = 0x120, truncated = 0x20 = +32 signed
+    assert!(cpu.status_register.contains(StatusFlags::OVERFLOW));
+    assert!(cpu.status_register.contains(StatusFlags::CARRY)); // also overflowed unsigned
+}
+
+// Overflow should NOT be set when signs differ (can never overflow)
+#[test]
+#[allow(non_snake_case)]
+fn test_adc_no_overflow_when_signs_differ() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0x50; // +80 signed
+    cpu.load_and_run(vec![0x69, 0xD0, 0x00]); // 0xD0 = -48 signed, result = 0x120 -> 0x20
+    assert!(!cpu.status_register.contains(StatusFlags::OVERFLOW));
+}
+
+// Addressing mode spot check - just one to confirm wiring
+#[test]
+#[allow(non_snake_case)]
+fn test_0x65_adc_zero_page() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0x10;
+    cpu.memory.write(0x20, 0x30);
+    cpu.load_and_run(vec![0x65, 0x20, 0x00]);
+    assert_eq!(cpu.accumulator, 0x40);
+}

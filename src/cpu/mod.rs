@@ -187,6 +187,9 @@ impl CPU {
                 0x8A => self.txa(),
                 0xA8 => self.tay(),
                 0x98 => self.tya(),
+                0x69 | 0x65 | 0x75 | 0x6D | 0x7D | 0x79 | 0x61 | 0x71 => {
+                    self.adc(&instruction.addressing_mode)
+                }
                 0x00 => return,
                 _ => {
                     panic!("instruction {:#04x} unkown", opcode)
@@ -208,6 +211,14 @@ impl CPU {
             self.status_register.insert(StatusFlags::NEGATIVE);
         } else {
             self.status_register.remove(StatusFlags::NEGATIVE);
+        }
+    }
+
+    fn update_carry_flag(&mut self, result: u16) {
+        if result > 0xFF {
+            self.status_register.insert(StatusFlags::CARRY);
+        } else {
+            self.status_register.remove(StatusFlags::CARRY);
         }
     }
 
@@ -276,6 +287,28 @@ impl CPU {
 
     fn tya(&mut self) {
         self.accumulator = self.index_y;
+
+        self.update_zero_flag(self.accumulator);
+        self.update_negative_flag(self.accumulator);
+    }
+
+    fn adc(&mut self, addressing_mode: &AddressingMode) {
+        let addr = self.get_memory_address(addressing_mode);
+        let value = self.memory.read(addr);
+        let temp_a = self.accumulator;
+
+        let mut result = self.accumulator as u16 + value as u16;
+        if self.status_register.contains(StatusFlags::CARRY) {
+            result += 1;
+        }
+
+        self.update_carry_flag(result);
+
+        if (result ^ temp_a as u16) & (result ^ value as u16) & 0x80 != 0 {
+            self.status_register.insert(StatusFlags::OVERFLOW);
+        }
+
+        self.accumulator = result as u8;
 
         self.update_zero_flag(self.accumulator);
         self.update_negative_flag(self.accumulator);
