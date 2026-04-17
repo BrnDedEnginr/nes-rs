@@ -153,3 +153,75 @@ fn test_0xB1_lda_indirect_y_page_cross() {
     cpu.load_and_run(vec![0xB1, 0x10, 0x00]);
     assert_eq!(cpu.accumulator, 0x55);
 }
+
+#[test]
+#[allow(non_snake_case)]
+fn test_0xA9_lda_sets_zero_flag() {
+    let mut cpu = CPU::new();
+    cpu.load_and_run(vec![0xA9, 0x00, 0x00]);
+    assert!(cpu.status_register.contains(StatusFlags::ZERO));
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_0xA9_lda_clears_zero_flag() {
+    let mut cpu = CPU::new();
+    cpu.load_and_run(vec![0xA9, 0x01, 0x00]);
+    assert!(!cpu.status_register.contains(StatusFlags::ZERO));
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_0xA9_lda_sets_negative_flag() {
+    let mut cpu = CPU::new();
+    cpu.load_and_run(vec![0xA9, 0x80, 0x00]); // 0x80 has bit 7 set
+    assert!(cpu.status_register.contains(StatusFlags::NEGATIVE));
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_0xA9_lda_clears_negative_flag() {
+    let mut cpu = CPU::new();
+    cpu.load_and_run(vec![0xA9, 0x01, 0x00]);
+    assert!(!cpu.status_register.contains(StatusFlags::NEGATIVE));
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_0x85_sta_zero_page() {
+    let mut cpu = CPU::new();
+    cpu.load_and_run(vec![0xA9, 0x55, 0x85, 0x10, 0x00]);
+    assert_eq!(cpu.memory.read(0x10), 0x55);
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_0xA2_ldx_immediate() {
+    let mut cpu = CPU::new();
+    cpu.load_and_run(vec![0xA2, 0x55, 0x00]);
+    assert_eq!(cpu.index_x, 0x55);
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_0x86_stx_zero_page() {
+    let mut cpu = CPU::new();
+    cpu.load_and_run(vec![0xA2, 0x55, 0x86, 0x10, 0x00]);
+    assert_eq!(cpu.memory.read(0x10), 0x55);
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_0xA0_ldy_immediate() {
+    let mut cpu = CPU::new();
+    cpu.load_and_run(vec![0xA0, 0x55, 0x00]);
+    assert_eq!(cpu.index_y, 0x55);
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_0x84_sty_zero_page() {
+    let mut cpu = CPU::new();
+    cpu.load_and_run(vec![0xA0, 0x55, 0x84, 0x10, 0x00]);
+    assert_eq!(cpu.memory.read(0x10), 0x55);
+}

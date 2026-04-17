@@ -166,7 +166,7 @@ impl CPU {
             self.program_counter += 1;
 
             let err_msg = &format!(
-                "YOU FUCK UP BRO, I GOT NOT FUCKING CLUE WHAT {:x} IS SUPPOSED TO BE",
+                "YOU FUCKED UP BRO, I GOT NOT FUCKING CLUE WHAT {:#04x} IS SUPPOSED TO BE",
                 opcode
             );
 
@@ -176,9 +176,16 @@ impl CPU {
                 0xA9 | 0xA5 | 0xB5 | 0xAD | 0xBD | 0xB9 | 0xA1 | 0xB1 => {
                     self.lda(&instruction.addressing_mode)
                 }
+                0x85 | 0x95 | 0x8D | 0x9D | 0x99 | 0x81 | 0x91 => {
+                    self.sta(&instruction.addressing_mode)
+                }
+                0xA2 | 0xA6 | 0xB6 | 0xAE | 0xBE => self.ldx(&instruction.addressing_mode),
+                0x86 | 0x96 | 0x8E => self.stx(&instruction.addressing_mode),
+                0xA0 | 0xA4 | 0xB4 | 0xAC | 0xBC => self.ldy(&instruction.addressing_mode),
+                0x84 | 0x94 | 0x8C => self.sty(&instruction.addressing_mode),
                 0x00 => return,
                 _ => {
-                    panic!("instruction {:#x} unkown", opcode)
+                    panic!("instruction {:#04x} unkown", opcode)
                 }
             }
         }
@@ -207,5 +214,38 @@ impl CPU {
 
         self.update_zero_flag(self.accumulator);
         self.update_negative_flag(self.accumulator);
+    }
+
+    fn sta(&mut self, addressing_mode: &AddressingMode) {
+        let addr = self.get_memory_address(addressing_mode);
+        self.memory.write(addr, self.accumulator);
+    }
+
+    fn ldx(&mut self, addressing_mode: &AddressingMode) {
+        let addr = self.get_memory_address(addressing_mode);
+        let value = self.memory.read(addr);
+        self.index_x = value;
+
+        self.update_zero_flag(self.index_x);
+        self.update_negative_flag(self.index_x);
+    }
+
+    fn stx(&mut self, addressing_mode: &AddressingMode) {
+        let addr = self.get_memory_address(addressing_mode);
+        self.memory.write(addr, self.index_x);
+    }
+
+    fn ldy(&mut self, addressing_mode: &AddressingMode) {
+        let addr = self.get_memory_address(addressing_mode);
+        let value = self.memory.read(addr);
+        self.index_y = value;
+
+        self.update_zero_flag(self.index_y);
+        self.update_negative_flag(self.index_y);
+    }
+
+    fn sty(&mut self, addressing_mode: &AddressingMode) {
+        let addr = self.get_memory_address(addressing_mode);
+        self.memory.write(addr, self.index_y);
     }
 }
