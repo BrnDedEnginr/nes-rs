@@ -191,10 +191,65 @@ lazy_static! {
         Instruction::new("CPY", 0xC4, 2, 3, AddressingMode::ZeroPage),
         Instruction::new("CPY", 0xCC, 3, 4, AddressingMode::Absolute),
         // BRANCH
-        // JUMP
+        // BCC
+        Instruction::new("BCC", 0x90, 2, 3, AddressingMode::Relative),
+        // BCS
+        Instruction::new("BCS", 0xB0, 2, 3, AddressingMode::Relative),
+        // BEQ
+        Instruction::new("BEQ", 0xF0, 2, 3, AddressingMode::Relative),
+        // BNE
+        Instruction::new("BNE", 0xD0, 2, 3, AddressingMode::Relative),
+        // BPL
+        Instruction::new("BPL", 0x10, 2, 3, AddressingMode::Relative),
+        // BMi
+        Instruction::new("BMI", 0x30, 2, 3, AddressingMode::Relative),
+        // BVC
+        Instruction::new("BVC", 0x50, 2, 3, AddressingMode::Relative),
+        // BVS
+        Instruction::new("BVS", 0x70, 2, 3, AddressingMode::Relative),
+        // JMP
+        Instruction::new("JMP", 0x4C, 3, 3, AddressingMode::Absolute),
+        Instruction::new("JMP", 0x6C, 3, 5, AddressingMode::Indirect),
+        // JSR
+        Instruction::new("JSR", 0x20, 3, 6, AddressingMode::Absolute),
+        // RTS
+        Instruction::new("RTS", 0x60, 1, 6, AddressingMode::Implicit),
+        // BRK
+        Instruction::new("BRK", 0x00, 1, 7, AddressingMode::Implicit),
+        Instruction::new("BRK", 0x00, 2, 7, AddressingMode::Immediate),
+        // RTI
+        Instruction::new("RTI", 0x40, 1, 6, AddressingMode::Implicit),
         // STACK
+        // PHA
+        Instruction::new("PHA", 0x48, 1, 3, AddressingMode::Implicit),
+        // PLA
+        Instruction::new("PLA", 0x68, 1, 4, AddressingMode::Implicit),
+        // PHP
+        Instruction::new("PHP", 0x08, 1, 3, AddressingMode::Implicit),
+        // PLP
+        Instruction::new("PLP", 0x28, 1, 4, AddressingMode::Implicit),
+        // TXS
+        Instruction::new("TXS", 0x9A, 1, 2, AddressingMode::Implicit),
+        // TSX
+        Instruction::new("TSX", 0xBA, 1, 2, AddressingMode::Implicit),
         // FLAGS
+        // CLC
+        Instruction::new("CLC", 0x18, 1, 2, AddressingMode::Implicit),
+        // SEC
+        Instruction::new("SEC", 0x38, 1, 2, AddressingMode::Implicit),
+        // CLI
+        Instruction::new("CLI", 0x58, 1, 2, AddressingMode::Implicit),
+        // SEI
+        Instruction::new("SEI", 0x78, 1, 2, AddressingMode::Implicit),
+        // CLD
+        Instruction::new("CLD", 0xD8, 1, 2, AddressingMode::Implicit),
+        // SED
+        Instruction::new("SED", 0xF8, 1, 2, AddressingMode::Implicit),
+        // CLV
+        Instruction::new("CLV", 0xB8, 1, 2, AddressingMode::Implicit),
         // OTHER
+        // NOP
+        Instruction::new("NOP", 0xEA, 1, 2, AddressingMode::Implicit),
     ];
     pub static ref CPU_INSTRUCTIONS_MAP: HashMap<u8, &'static Instruction> = {
         let mut map = HashMap::new();
