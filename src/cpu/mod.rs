@@ -19,6 +19,9 @@ bitflags! {
     }
 }
 
+const STACK: u16 = 0x0100;
+const STACK_RESET: u8 = 0xFD;
+
 pub struct CPU {
     accumulator: u8,
     index_x: u8,
@@ -37,7 +40,7 @@ impl Default for CPU {
             index_y: Default::default(),
             program_counter: Default::default(),
             stack_pointer: Default::default(),
-            status_register: StatusFlags::from_bits_truncate(0b0),
+            status_register: StatusFlags::from_bits_truncate(0b100100),
             memory: Memory::new(),
         }
     }
@@ -51,18 +54,32 @@ impl CPU {
             index_y: 0,
             program_counter: 0,
             stack_pointer: 0,
-            status_register: StatusFlags::from_bits_truncate(0b0),
+            status_register: StatusFlags::from_bits_truncate(0b100100),
             memory: Memory::new(),
         }
     }
 
-    fn get_addressed_memory(&self, mode: &AddressingMode) -> u16 {
+    fn get_memory_address(&mut self, mode: &AddressingMode) -> u16 {
         match mode {
-            AddressingMode::Implicit => 0,
+            AddressingMode::Implicit => {
+                panic!("WTF BRO!?")
+            }
             AddressingMode::Accumulator => self.accumulator as u16,
-            AddressingMode::Immediate => self.program_counter,
-            AddressingMode::ZeroPage => self.memory.read(self.program_counter) as u16,
-            AddressingMode::Absolute => self.memory.read_u16(self.program_counter),
+            AddressingMode::Immediate => {
+                let addr = self.program_counter;
+                self.program_counter += 1;
+                addr
+            }
+            AddressingMode::ZeroPage => {
+                let addr = self.memory.read(self.program_counter) as u16;
+                self.program_counter += 1;
+                addr
+            }
+            AddressingMode::Absolute => {
+                let addr = self.memory.read_u16(self.program_counter);
+                self.program_counter += 2;
+                addr
+            }
             AddressingMode::Relative => {
                 let offset = self.memory.read(self.program_counter) as i8;
                 self.program_counter
@@ -81,35 +98,114 @@ impl CPU {
                 }
             }
             AddressingMode::ZeroPage_X => {
-                let pos = self.memory.read(self.program_counter);
-                pos.wrapping_add(self.index_x) as u16
+                let arg = self.memory.read(self.program_counter);
+                let addr = (arg as u16 + self.index_x as u16) % 256;
+                self.program_counter += 1;
+                addr
             }
             AddressingMode::ZeroPage_Y => {
-                let pos = self.memory.read(self.program_counter);
-                pos.wrapping_add(self.index_y) as u16
+                let arg = self.memory.read(self.program_counter);
+                let addr = (arg as u16 + self.index_y as u16) % 256;
+                self.program_counter += 1;
+                addr
             }
             AddressingMode::Absolute_X => {
-                let base = self.memory.read_u16(self.program_counter);
-                base.wrapping_add(self.index_x as u16)
+                let arg = self.memory.read_u16(self.program_counter);
+                let addr = arg + self.index_x as u16;
+                self.program_counter += 2;
+                addr
             }
             AddressingMode::Absolute_Y => {
-                let base = self.memory.read_u16(self.program_counter);
-                base.wrapping_add(self.index_y as u16)
+                let arg = self.memory.read_u16(self.program_counter);
+                let addr = arg + self.index_y as u16;
+                self.program_counter += 2;
+                addr
             }
             AddressingMode::Indirect_X => {
-                let base = self.memory.read(self.program_counter);
-                let ptr = base.wrapping_add(self.index_x);
-                let lo = self.memory.read(ptr as u16);
-                let hi = self.memory.read(ptr.wrapping_add(1) as u16);
-                u16::from_le_bytes([lo, hi])
+                let arg = self.memory.read(self.program_counter);
+                let addr = self.memory.read((arg as u16 + self.index_x as u16) % 256) as u16
+                    + self
+                        .memory
+                        .read((arg as u16 + self.index_x as u16 + 1) % 256)
+                        as u16
+                        * 256;
+                self.program_counter += 2;
+                addr
             }
             AddressingMode::Indirect_Y => {
-                let base = self.memory.read(self.program_counter);
-                let lo = self.memory.read(base as u16);
-                let hi = self.memory.read(base.wrapping_add(1) as u16);
-                let x = u16::from_le_bytes([lo, hi]);
-                x.wrapping_add(self.index_y as u16)
+                let arg = self.memory.read(self.program_counter);
+                let addr = self.memory.read(arg as u16) as u16
+                    + self.memory.read((arg as u16 + 1) % 256) as u16 * 256
+                    + self.index_y as u16;
+                self.program_counter += 2;
+                addr
             }
         }
+    }
+
+    pub fn reset(&mut self) {
+        self.accumulator = 0;
+        self.index_x = 0;
+        self.index_y = 0;
+        self.stack_pointer = STACK_RESET;
+        self.status_register = StatusFlags::from_bits_truncate(0b100100);
+        self.program_counter = self.memory.read_u16(0xFFFC);
+    }
+
+    pub fn load_and_run(&mut self, program: Vec<u8>) {
+        self.memory.load(program);
+        self.program_counter = self.memory.read_u16(0xFFFC);
+        self.run();
+    }
+
+    pub fn run(&mut self) {
+        let instructions = &*instruction::CPU_INSTRUCTIONS_MAP;
+
+        loop {
+            let opcode = self.memory.read(self.program_counter);
+            self.program_counter += 1;
+
+            let err_msg = &format!(
+                "YOU FUCK UP BRO, I GOT NOT FUCKING CLUE WHAT {:x} IS SUPPOSED TO BE",
+                opcode
+            );
+
+            let instruction = instructions.get(&opcode).expect(err_msg);
+
+            match opcode {
+                0xA9 | 0xA5 | 0xB5 | 0xAD | 0xBD | 0xB9 | 0xA1 | 0xB1 => {
+                    self.lda(&instruction.addressing_mode)
+                }
+                0x00 => return,
+                _ => {
+                    panic!("instruction {:#x} unkown", opcode)
+                }
+            }
+        }
+    }
+
+    fn update_zero_flag(&mut self, result: u8) {
+        if result == 0 {
+            self.status_register.insert(StatusFlags::ZERO);
+        } else {
+            self.status_register.remove(StatusFlags::ZERO);
+        }
+    }
+
+    fn update_negative_flag(&mut self, result: u8) {
+        if result & 0b1000_0000 != 0 {
+            self.status_register.insert(StatusFlags::NEGATIVE);
+        } else {
+            self.status_register.remove(StatusFlags::NEGATIVE);
+        }
+    }
+
+    fn lda(&mut self, addressing_mode: &AddressingMode) {
+        let addr = self.get_memory_address(addressing_mode);
+        let value = self.memory.read(addr);
+        self.accumulator = value;
+
+        self.update_zero_flag(self.accumulator);
+        self.update_negative_flag(self.accumulator);
     }
 }

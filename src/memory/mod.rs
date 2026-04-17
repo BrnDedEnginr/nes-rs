@@ -39,4 +39,9 @@ impl Memory {
         self.write(address, bytes[0]);
         self.write(address + 1, bytes[1]);
     }
+
+    pub fn load(&mut self, program: Vec<u8>) {
+        self.memory[0x8000..(0x8000 + program.len())].copy_from_slice(&program[..]);
+        self.write_u16(0xFFFC, 0x8000);
+    }
 }

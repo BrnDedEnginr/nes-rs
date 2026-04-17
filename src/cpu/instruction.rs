@@ -2,18 +2,18 @@ use std::collections::HashMap;
 
 use lazy_static::lazy_static;
 
-use crate::cpu::addressing_mode::{self, AddressingMode};
+use crate::cpu::addressing_mode::AddressingMode;
 
 pub struct Instruction {
-    mnemonic: &'static str,
-    opcode: u8,
-    bytes: u8,
-    cycles: u8,
-    addressing_mode: AddressingMode,
+    pub mnemonic: &'static str,
+    pub opcode: u8,
+    pub bytes: u8,
+    pub cycles: u8,
+    pub addressing_mode: AddressingMode,
 }
 
 impl Instruction {
-    pub fn new(
+    fn new(
         mnemonic: &'static str,
         opcode: u8,
         bytes: u8,
