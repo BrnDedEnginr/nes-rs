@@ -199,6 +199,8 @@ impl CPU {
                 0xCA => self.dex(),
                 0xC8 => self.iny(),
                 0x88 => self.dey(),
+                0x0A | 0x06 | 0x16 | 0x0E | 0x1E => self.asl(&instruction.addressing_mode),
+                0x4A | 0x46 | 0x56 | 0x4E | 0x5E => self.lsr(&instruction.addressing_mode),
                 0x00 => return,
                 _ => {
                     panic!("instruction {:#04x} unkown", opcode)
@@ -373,5 +375,53 @@ impl CPU {
         self.index_y = self.index_y.wrapping_sub(1);
         self.update_zero_flag(self.index_y);
         self.update_negative_flag(self.index_y);
+    }
+
+    fn asl(&mut self, addressing_mode: &AddressingMode) {
+        let addr = self.get_memory_address(addressing_mode);
+        let value = match addressing_mode {
+            AddressingMode::Accumulator => self.accumulator,
+            _ => self.memory.read(addr),
+        };
+        let result = value << 1;
+
+        match addressing_mode {
+            AddressingMode::Accumulator => {
+                self.accumulator = value << 1;
+            }
+            _ => {
+                self.memory.write(addr, value);
+                self.memory.write(addr, result);
+            }
+        }
+
+        self.status_register
+            .set(StatusFlags::CARRY, value & 0x80 != 0);
+        self.update_negative_flag(result);
+        self.update_zero_flag(result);
+    }
+
+    fn lsr(&mut self, addressing_mode: &AddressingMode) {
+        let addr = self.get_memory_address(addressing_mode);
+        let value = match addressing_mode {
+            AddressingMode::Accumulator => self.accumulator,
+            _ => self.memory.read(addr),
+        };
+        let result = value >> 1;
+
+        match addressing_mode {
+            AddressingMode::Accumulator => {
+                self.accumulator = value >> 1;
+            }
+            _ => {
+                self.memory.write(addr, value);
+                self.memory.write(addr, result);
+            }
+        }
+
+        self.status_register
+            .set(StatusFlags::CARRY, value & 0x01 != 0);
+        self.update_negative_flag(result);
+        self.update_zero_flag(result);
     }
 }

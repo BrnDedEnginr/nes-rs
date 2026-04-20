@@ -736,3 +736,182 @@ fn test_dey_sets_negative_flag() {
     cpu.load_and_run(vec![0x88, 0x00]);
     assert!(cpu.status_register.contains(StatusFlags::NEGATIVE));
 }
+// ===== ASL =====
+// ASL: C <- [76543210] <- 0
+// shifts left, bit 7 goes into carry, 0 shifts into bit 0
+
+#[test]
+#[allow(non_snake_case)]
+fn test_0x0A_asl_accumulator() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0x10;
+    cpu.load_and_run(vec![0x0A, 0x00]);
+    assert_eq!(cpu.accumulator, 0x20); // 0x10 << 1 = 0x20
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_asl_sets_carry_from_bit_7() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0x80; // bit 7 set, will shift into carry
+    cpu.load_and_run(vec![0x0A, 0x00]);
+    assert_eq!(cpu.accumulator, 0x00);
+    assert!(cpu.status_register.contains(StatusFlags::CARRY));
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_asl_clears_carry_when_bit_7_clear() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0x40; // bit 7 clear
+    cpu.load_and_run(vec![0x0A, 0x00]);
+    assert_eq!(cpu.accumulator, 0x80);
+    assert!(!cpu.status_register.contains(StatusFlags::CARRY));
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_asl_sets_zero_flag() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0x80; // 0x80 << 1 = 0x00 (bit 7 goes to carry, result is 0)
+    cpu.load_and_run(vec![0x0A, 0x00]);
+    assert_eq!(cpu.accumulator, 0x00);
+    assert!(cpu.status_register.contains(StatusFlags::ZERO));
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_asl_sets_negative_flag() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0x40; // 0x40 << 1 = 0x80, bit 7 set
+    cpu.load_and_run(vec![0x0A, 0x00]);
+    assert_eq!(cpu.accumulator, 0x80);
+    assert!(cpu.status_register.contains(StatusFlags::NEGATIVE));
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_asl_clears_negative_flag() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0x20; // 0x20 << 1 = 0x40, bit 7 clear
+    cpu.load_and_run(vec![0x0A, 0x00]);
+    assert_eq!(cpu.accumulator, 0x40);
+    assert!(!cpu.status_register.contains(StatusFlags::NEGATIVE));
+}
+
+// carry in does NOT feed into bit 0 — that's ROL, not ASL
+#[test]
+#[allow(non_snake_case)]
+fn test_asl_ignores_carry_in() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0x01;
+    cpu.status_register.insert(StatusFlags::CARRY); // carry set, but should not affect result
+    cpu.load_and_run(vec![0x0A, 0x00]);
+    assert_eq!(cpu.accumulator, 0x02); // bit 0 of result is always 0
+}
+
+// memory mode spot check
+#[test]
+#[allow(non_snake_case)]
+fn test_0x06_asl_zero_page() {
+    let mut cpu = CPU::new();
+    cpu.memory.write(0x10, 0x10);
+    cpu.load_and_run(vec![0x06, 0x10, 0x00]);
+    assert_eq!(cpu.memory.read(0x10), 0x20);
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_asl_zero_page_sets_carry() {
+    let mut cpu = CPU::new();
+    cpu.memory.write(0x10, 0x80); // bit 7 set
+    cpu.load_and_run(vec![0x06, 0x10, 0x00]);
+    assert_eq!(cpu.memory.read(0x10), 0x00);
+    assert!(cpu.status_register.contains(StatusFlags::CARRY));
+}
+
+// ===== LSR =====
+// LSR: 0 -> [76543210] -> C
+// shifts right, bit 0 goes into carry, 0 shifts into bit 7
+
+#[test]
+#[allow(non_snake_case)]
+fn test_0x4A_lsr_accumulator() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0x20;
+    cpu.load_and_run(vec![0x4A, 0x00]);
+    assert_eq!(cpu.accumulator, 0x10); // 0x20 >> 1 = 0x10
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_lsr_sets_carry_from_bit_0() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0x01; // bit 0 set, will shift into carry
+    cpu.load_and_run(vec![0x4A, 0x00]);
+    assert_eq!(cpu.accumulator, 0x00);
+    assert!(cpu.status_register.contains(StatusFlags::CARRY));
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_lsr_clears_carry_when_bit_0_clear() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0x02; // bit 0 clear
+    cpu.status_register.insert(StatusFlags::CARRY); // carry was set, should clear
+    cpu.load_and_run(vec![0x4A, 0x00]);
+    assert_eq!(cpu.accumulator, 0x01);
+    assert!(!cpu.status_register.contains(StatusFlags::CARRY));
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_lsr_sets_zero_flag() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0x01; // 0x01 >> 1 = 0x00
+    cpu.load_and_run(vec![0x4A, 0x00]);
+    assert_eq!(cpu.accumulator, 0x00);
+    assert!(cpu.status_register.contains(StatusFlags::ZERO));
+}
+
+// LSR always clears negative flag since bit 7 is always 0 after shift
+#[test]
+#[allow(non_snake_case)]
+fn test_lsr_always_clears_negative_flag() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0xFF; // even with all bits set, result bit 7 will be 0
+    cpu.load_and_run(vec![0x4A, 0x00]);
+    assert_eq!(cpu.accumulator, 0x7F);
+    assert!(!cpu.status_register.contains(StatusFlags::NEGATIVE));
+}
+
+// carry in does NOT feed into bit 7 — that's ROR, not LSR
+#[test]
+#[allow(non_snake_case)]
+fn test_lsr_ignores_carry_in() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0x80;
+    cpu.status_register.insert(StatusFlags::CARRY); // carry set, but should not affect result
+    cpu.load_and_run(vec![0x4A, 0x00]);
+    assert_eq!(cpu.accumulator, 0x40); // bit 7 of result is always 0
+}
+
+// memory mode spot check
+#[test]
+#[allow(non_snake_case)]
+fn test_0x46_lsr_zero_page() {
+    let mut cpu = CPU::new();
+    cpu.memory.write(0x10, 0x20);
+    cpu.load_and_run(vec![0x46, 0x10, 0x00]);
+    assert_eq!(cpu.memory.read(0x10), 0x10);
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_lsr_zero_page_sets_carry() {
+    let mut cpu = CPU::new();
+    cpu.memory.write(0x10, 0x01); // bit 0 set
+    cpu.load_and_run(vec![0x46, 0x10, 0x00]);
+    assert_eq!(cpu.memory.read(0x10), 0x00);
+    assert!(cpu.status_register.contains(StatusFlags::CARRY));
+}
