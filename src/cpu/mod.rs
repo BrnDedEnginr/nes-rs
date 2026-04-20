@@ -203,6 +203,16 @@ impl CPU {
                 0x4A | 0x46 | 0x56 | 0x4E | 0x5E => self.lsr(&instruction.addressing_mode),
                 0x2A | 0x26 | 0x36 | 0x2E | 0x3E => self.rol(&instruction.addressing_mode),
                 0x6A | 0x66 | 0x76 | 0x6E | 0x7E => self.ror(&instruction.addressing_mode),
+                0x29 | 0x25 | 0x35 | 0x2D | 0x3D | 0x39 | 0x21 | 0x31 => {
+                    self.and(&instruction.addressing_mode)
+                }
+                0x09 | 0x05 | 0x15 | 0x0D | 0x1D | 0x19 | 0x01 | 0x11 => {
+                    self.ora(&instruction.addressing_mode)
+                }
+                0x49 | 0x45 | 0x55 | 0x4D | 0x5D | 0x59 | 0x41 | 0x51 => {
+                    self.eor(&instruction.addressing_mode)
+                }
+                0x24 | 0x2C => self.bit(&instruction.addressing_mode),
                 0x00 => return,
                 _ => {
                     panic!("instruction {:#04x} unkown", opcode)
@@ -471,5 +481,39 @@ impl CPU {
             .set(StatusFlags::CARRY, value & 0x01 != 0);
         self.update_negative_flag(result);
         self.update_zero_flag(result);
+    }
+
+    fn and(&mut self, addressing_mode: &AddressingMode) {
+        let addr = self.get_memory_address(addressing_mode);
+        let value = self.memory.read(addr);
+        self.accumulator &= value;
+        self.update_zero_flag(self.accumulator);
+        self.update_negative_flag(self.accumulator);
+    }
+
+    fn ora(&mut self, addressing_mode: &AddressingMode) {
+        let addr = self.get_memory_address(addressing_mode);
+        let value = self.memory.read(addr);
+        self.accumulator |= value;
+        self.update_zero_flag(self.accumulator);
+        self.update_negative_flag(self.accumulator);
+    }
+
+    fn eor(&mut self, addressing_mode: &AddressingMode) {
+        let addr = self.get_memory_address(addressing_mode);
+        let value = self.memory.read(addr);
+        self.accumulator ^= value;
+        self.update_zero_flag(self.accumulator);
+        self.update_negative_flag(self.accumulator);
+    }
+
+    fn bit(&mut self, addressing_mode: &AddressingMode) {
+        let addr = self.get_memory_address(addressing_mode);
+        let value = self.memory.read(addr);
+        let result = self.accumulator & value;
+        self.update_zero_flag(result);
+        self.status_register
+            .set(StatusFlags::OVERFLOW, value & 0b0100_0000 != 0);
+        self.update_negative_flag(value);
     }
 }

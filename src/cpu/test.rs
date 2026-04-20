@@ -1089,3 +1089,309 @@ fn test_0x66_ror_zero_page() {
     cpu.load_and_run(vec![0x66, 0x10, 0x00]);
     assert_eq!(cpu.memory.read(0x10), 0x90); // 0x20 >> 1 = 0x10, carry into bit 7 = 0x90
 }
+// ===== AND =====
+// A = A & memory
+
+#[test]
+#[allow(non_snake_case)]
+fn test_0x29_and_immediate() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0xFF;
+    cpu.load_and_run(vec![0x29, 0x0F, 0x00]);
+    assert_eq!(cpu.accumulator, 0x0F); // 0xFF & 0x0F = 0x0F
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_and_sets_zero_flag() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0xF0;
+    cpu.load_and_run(vec![0x29, 0x0F, 0x00]); // 0xF0 & 0x0F = 0x00
+    assert_eq!(cpu.accumulator, 0x00);
+    assert!(cpu.status_register.contains(StatusFlags::ZERO));
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_and_clears_zero_flag() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0xFF;
+    cpu.load_and_run(vec![0x29, 0x01, 0x00]); // 0xFF & 0x01 = 0x01
+    assert!(!cpu.status_register.contains(StatusFlags::ZERO));
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_and_sets_negative_flag() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0xFF;
+    cpu.load_and_run(vec![0x29, 0x80, 0x00]); // 0xFF & 0x80 = 0x80, bit 7 set
+    assert_eq!(cpu.accumulator, 0x80);
+    assert!(cpu.status_register.contains(StatusFlags::NEGATIVE));
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_and_clears_negative_flag() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0xFF;
+    cpu.load_and_run(vec![0x29, 0x7F, 0x00]); // 0xFF & 0x7F = 0x7F, bit 7 clear
+    assert_eq!(cpu.accumulator, 0x7F);
+    assert!(!cpu.status_register.contains(StatusFlags::NEGATIVE));
+}
+
+// spot check a second addressing mode
+#[test]
+#[allow(non_snake_case)]
+fn test_0x25_and_zero_page() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0xFF;
+    cpu.memory.write(0x10, 0x0F);
+    cpu.load_and_run(vec![0x25, 0x10, 0x00]);
+    assert_eq!(cpu.accumulator, 0x0F);
+}
+
+// ===== ORA =====
+// A = A | memory
+
+#[test]
+#[allow(non_snake_case)]
+fn test_0x09_ora_immediate() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0xF0;
+    cpu.load_and_run(vec![0x09, 0x0F, 0x00]);
+    assert_eq!(cpu.accumulator, 0xFF); // 0xF0 | 0x0F = 0xFF
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_ora_sets_zero_flag() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0x00;
+    cpu.load_and_run(vec![0x09, 0x00, 0x00]); // 0x00 | 0x00 = 0x00
+    assert_eq!(cpu.accumulator, 0x00);
+    assert!(cpu.status_register.contains(StatusFlags::ZERO));
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_ora_clears_zero_flag() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0x00;
+    cpu.load_and_run(vec![0x09, 0x01, 0x00]); // 0x00 | 0x01 = 0x01
+    assert!(!cpu.status_register.contains(StatusFlags::ZERO));
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_ora_sets_negative_flag() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0x00;
+    cpu.load_and_run(vec![0x09, 0x80, 0x00]); // 0x00 | 0x80 = 0x80, bit 7 set
+    assert_eq!(cpu.accumulator, 0x80);
+    assert!(cpu.status_register.contains(StatusFlags::NEGATIVE));
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_ora_clears_negative_flag() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0x00;
+    cpu.load_and_run(vec![0x09, 0x7F, 0x00]); // 0x00 | 0x7F = 0x7F, bit 7 clear
+    assert_eq!(cpu.accumulator, 0x7F);
+    assert!(!cpu.status_register.contains(StatusFlags::NEGATIVE));
+}
+
+// spot check a second addressing mode
+#[test]
+#[allow(non_snake_case)]
+fn test_0x05_ora_zero_page() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0xF0;
+    cpu.memory.write(0x10, 0x0F);
+    cpu.load_and_run(vec![0x05, 0x10, 0x00]);
+    assert_eq!(cpu.accumulator, 0xFF);
+}
+
+// ===== EOR =====
+// A = A ^ memory
+
+#[test]
+#[allow(non_snake_case)]
+fn test_0x49_eor_immediate() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0xFF;
+    cpu.load_and_run(vec![0x49, 0x0F, 0x00]);
+    assert_eq!(cpu.accumulator, 0xF0); // 0xFF ^ 0x0F = 0xF0
+}
+
+// EOR with 0xFF acts as bitwise NOT
+#[test]
+#[allow(non_snake_case)]
+fn test_eor_as_bitwise_not() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0xAA;
+    cpu.load_and_run(vec![0x49, 0xFF, 0x00]); // 0xAA ^ 0xFF = 0x55
+    assert_eq!(cpu.accumulator, 0x55);
+}
+
+// EOR with itself always gives zero
+#[test]
+#[allow(non_snake_case)]
+fn test_eor_with_self_gives_zero() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0xAA;
+    cpu.load_and_run(vec![0x49, 0xAA, 0x00]); // 0xAA ^ 0xAA = 0x00
+    assert_eq!(cpu.accumulator, 0x00);
+    assert!(cpu.status_register.contains(StatusFlags::ZERO));
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_eor_sets_zero_flag() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0xFF;
+    cpu.load_and_run(vec![0x49, 0xFF, 0x00]); // 0xFF ^ 0xFF = 0x00
+    assert!(cpu.status_register.contains(StatusFlags::ZERO));
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_eor_clears_zero_flag() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0xFF;
+    cpu.load_and_run(vec![0x49, 0x0F, 0x00]); // 0xFF ^ 0x0F = 0xF0
+    assert!(!cpu.status_register.contains(StatusFlags::ZERO));
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_eor_sets_negative_flag() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0x0F;
+    cpu.load_and_run(vec![0x49, 0xFF, 0x00]); // 0x0F ^ 0xFF = 0xF0, bit 7 set
+    assert_eq!(cpu.accumulator, 0xF0);
+    assert!(cpu.status_register.contains(StatusFlags::NEGATIVE));
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_eor_clears_negative_flag() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0xFF;
+    cpu.load_and_run(vec![0x49, 0xFF, 0x00]); // 0xFF ^ 0xFF = 0x00, bit 7 clear
+    assert!(!cpu.status_register.contains(StatusFlags::NEGATIVE));
+}
+
+// spot check a second addressing mode
+#[test]
+#[allow(non_snake_case)]
+fn test_0x45_eor_zero_page() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0xFF;
+    cpu.memory.write(0x10, 0x0F);
+    cpu.load_and_run(vec![0x45, 0x10, 0x00]);
+    assert_eq!(cpu.accumulator, 0xF0);
+}
+
+// ===== BIT =====
+// A & memory, but result only affects flags, not accumulator
+// Z = result == 0
+// V = memory bit 6
+// N = memory bit 7
+
+#[test]
+#[allow(non_snake_case)]
+fn test_0x24_bit_zero_page() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0xFF;
+    cpu.memory.write(0x10, 0x0F);
+    cpu.load_and_run(vec![0x24, 0x10, 0x00]);
+    assert_eq!(cpu.accumulator, 0xFF); // accumulator is NOT changed
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_bit_sets_zero_flag_when_masked_result_is_zero() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0xF0;
+    cpu.memory.write(0x10, 0x0F); // 0xF0 & 0x0F = 0x00
+    cpu.load_and_run(vec![0x24, 0x10, 0x00]);
+    assert!(cpu.status_register.contains(StatusFlags::ZERO));
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_bit_clears_zero_flag_when_masked_result_nonzero() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0xFF;
+    cpu.memory.write(0x10, 0x0F); // 0xFF & 0x0F = 0x0F, not zero
+    cpu.load_and_run(vec![0x24, 0x10, 0x00]);
+    assert!(!cpu.status_register.contains(StatusFlags::ZERO));
+}
+
+// N comes from bit 7 of MEMORY, not the result of the AND
+#[test]
+#[allow(non_snake_case)]
+fn test_bit_sets_negative_flag_from_memory_bit_7() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0x00; // AND result will be zero, but N comes from memory
+    cpu.memory.write(0x10, 0x80); // bit 7 of memory set
+    cpu.load_and_run(vec![0x24, 0x10, 0x00]);
+    assert!(cpu.status_register.contains(StatusFlags::NEGATIVE));
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_bit_clears_negative_flag_when_memory_bit_7_clear() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0xFF;
+    cpu.memory.write(0x10, 0x7F); // bit 7 of memory clear
+    cpu.load_and_run(vec![0x24, 0x10, 0x00]);
+    assert!(!cpu.status_register.contains(StatusFlags::NEGATIVE));
+}
+
+// V comes from bit 6 of MEMORY, not the result of the AND
+#[test]
+#[allow(non_snake_case)]
+fn test_bit_sets_overflow_flag_from_memory_bit_6() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0x00; // AND result will be zero, but V comes from memory
+    cpu.memory.write(0x10, 0x40); // bit 6 of memory set
+    cpu.load_and_run(vec![0x24, 0x10, 0x00]);
+    assert!(cpu.status_register.contains(StatusFlags::OVERFLOW));
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_bit_clears_overflow_flag_when_memory_bit_6_clear() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0xFF;
+    cpu.memory.write(0x10, 0x3F); // bit 6 of memory clear
+    cpu.load_and_run(vec![0x24, 0x10, 0x00]);
+    assert!(!cpu.status_register.contains(StatusFlags::OVERFLOW));
+}
+
+// both N and V set at the same time
+#[test]
+#[allow(non_snake_case)]
+fn test_bit_sets_negative_and_overflow_from_memory() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0x00;
+    cpu.memory.write(0x10, 0xC0); // bits 7 and 6 both set
+    cpu.load_and_run(vec![0x24, 0x10, 0x00]);
+    assert!(cpu.status_register.contains(StatusFlags::NEGATIVE));
+    assert!(cpu.status_register.contains(StatusFlags::OVERFLOW));
+}
+
+// absolute mode spot check
+#[test]
+#[allow(non_snake_case)]
+fn test_0x2C_bit_absolute() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0xFF;
+    cpu.memory.write(0x2000, 0xC0); // bits 7 and 6 set
+    cpu.load_and_run(vec![0x2C, 0x00, 0x20, 0x00]);
+    assert!(cpu.status_register.contains(StatusFlags::NEGATIVE));
+    assert!(cpu.status_register.contains(StatusFlags::OVERFLOW));
+}
