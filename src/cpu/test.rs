@@ -490,3 +490,249 @@ fn test_0xE5_sbc_zero_page() {
     cpu.load_and_run(vec![0xE5, 0x20, 0x00]);
     assert_eq!(cpu.accumulator, 0x40);
 }
+
+// ===== INC =====
+
+#[test]
+#[allow(non_snake_case)]
+fn test_0xE6_inc_zero_page() {
+    let mut cpu = CPU::new();
+    cpu.memory.write(0x10, 0x20);
+    cpu.load_and_run(vec![0xE6, 0x10, 0x00]);
+    assert_eq!(cpu.memory.read(0x10), 0x21);
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_inc_wraps_around() {
+    let mut cpu = CPU::new();
+    cpu.memory.write(0x10, 0xFF);
+    cpu.load_and_run(vec![0xE6, 0x10, 0x00]);
+    assert_eq!(cpu.memory.read(0x10), 0x00);
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_inc_sets_zero_flag() {
+    let mut cpu = CPU::new();
+    cpu.memory.write(0x10, 0xFF); // 0xFF + 1 wraps to 0x00
+    cpu.load_and_run(vec![0xE6, 0x10, 0x00]);
+    assert!(cpu.status_register.contains(StatusFlags::ZERO));
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_inc_sets_negative_flag() {
+    let mut cpu = CPU::new();
+    cpu.memory.write(0x10, 0x7F); // 0x7F + 1 = 0x80, bit 7 set
+    cpu.load_and_run(vec![0xE6, 0x10, 0x00]);
+    assert!(cpu.status_register.contains(StatusFlags::NEGATIVE));
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_inc_clears_negative_flag() {
+    let mut cpu = CPU::new();
+    cpu.memory.write(0x10, 0x7E); // 0x7E + 1 = 0x7F, bit 7 clear
+    cpu.load_and_run(vec![0xE6, 0x10, 0x00]);
+    assert!(!cpu.status_register.contains(StatusFlags::NEGATIVE));
+}
+
+// ===== DEC =====
+
+#[test]
+#[allow(non_snake_case)]
+fn test_0xC6_dec_zero_page() {
+    let mut cpu = CPU::new();
+    cpu.memory.write(0x10, 0x20);
+    cpu.load_and_run(vec![0xC6, 0x10, 0x00]);
+    assert_eq!(cpu.memory.read(0x10), 0x1F);
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_dec_wraps_around() {
+    let mut cpu = CPU::new();
+    cpu.memory.write(0x10, 0x00); // 0x00 - 1 wraps to 0xFF
+    cpu.load_and_run(vec![0xC6, 0x10, 0x00]);
+    assert_eq!(cpu.memory.read(0x10), 0xFF);
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_dec_sets_zero_flag() {
+    let mut cpu = CPU::new();
+    cpu.memory.write(0x10, 0x01); // 0x01 - 1 = 0x00
+    cpu.load_and_run(vec![0xC6, 0x10, 0x00]);
+    assert!(cpu.status_register.contains(StatusFlags::ZERO));
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_dec_sets_negative_flag() {
+    let mut cpu = CPU::new();
+    cpu.memory.write(0x10, 0x00); // 0x00 - 1 = 0xFF, bit 7 set
+    cpu.load_and_run(vec![0xC6, 0x10, 0x00]);
+    assert!(cpu.status_register.contains(StatusFlags::NEGATIVE));
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_dec_clears_zero_flag() {
+    let mut cpu = CPU::new();
+    cpu.memory.write(0x10, 0x02); // 0x02 - 1 = 0x01, not zero
+    cpu.load_and_run(vec![0xC6, 0x10, 0x00]);
+    assert!(!cpu.status_register.contains(StatusFlags::ZERO));
+}
+
+// ===== INX =====
+
+#[test]
+#[allow(non_snake_case)]
+fn test_0xE8_inx() {
+    let mut cpu = CPU::new();
+    cpu.index_x = 0x20;
+    cpu.load_and_run(vec![0xE8, 0x00]);
+    assert_eq!(cpu.index_x, 0x21);
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_inx_wraps_around() {
+    let mut cpu = CPU::new();
+    cpu.index_x = 0xFF;
+    cpu.load_and_run(vec![0xE8, 0x00]);
+    assert_eq!(cpu.index_x, 0x00);
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_inx_sets_zero_flag() {
+    let mut cpu = CPU::new();
+    cpu.index_x = 0xFF; // 0xFF + 1 wraps to 0x00
+    cpu.load_and_run(vec![0xE8, 0x00]);
+    assert!(cpu.status_register.contains(StatusFlags::ZERO));
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_inx_sets_negative_flag() {
+    let mut cpu = CPU::new();
+    cpu.index_x = 0x7F; // 0x7F + 1 = 0x80, bit 7 set
+    cpu.load_and_run(vec![0xE8, 0x00]);
+    assert!(cpu.status_register.contains(StatusFlags::NEGATIVE));
+}
+
+// ===== DEX =====
+
+#[test]
+#[allow(non_snake_case)]
+fn test_0xCA_dex() {
+    let mut cpu = CPU::new();
+    cpu.index_x = 0x20;
+    cpu.load_and_run(vec![0xCA, 0x00]);
+    assert_eq!(cpu.index_x, 0x1F);
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_dex_wraps_around() {
+    let mut cpu = CPU::new();
+    cpu.index_x = 0x00; // 0x00 - 1 wraps to 0xFF
+    cpu.load_and_run(vec![0xCA, 0x00]);
+    assert_eq!(cpu.index_x, 0xFF);
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_dex_sets_zero_flag() {
+    let mut cpu = CPU::new();
+    cpu.index_x = 0x01; // 0x01 - 1 = 0x00
+    cpu.load_and_run(vec![0xCA, 0x00]);
+    assert!(cpu.status_register.contains(StatusFlags::ZERO));
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_dex_sets_negative_flag() {
+    let mut cpu = CPU::new();
+    cpu.index_x = 0x00; // 0x00 - 1 = 0xFF, bit 7 set
+    cpu.load_and_run(vec![0xCA, 0x00]);
+    assert!(cpu.status_register.contains(StatusFlags::NEGATIVE));
+}
+
+// ===== INY =====
+
+#[test]
+#[allow(non_snake_case)]
+fn test_0xC8_iny() {
+    let mut cpu = CPU::new();
+    cpu.index_y = 0x20;
+    cpu.load_and_run(vec![0xC8, 0x00]);
+    assert_eq!(cpu.index_y, 0x21);
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_iny_wraps_around() {
+    let mut cpu = CPU::new();
+    cpu.index_y = 0xFF;
+    cpu.load_and_run(vec![0xC8, 0x00]);
+    assert_eq!(cpu.index_y, 0x00);
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_iny_sets_zero_flag() {
+    let mut cpu = CPU::new();
+    cpu.index_y = 0xFF;
+    cpu.load_and_run(vec![0xC8, 0x00]);
+    assert!(cpu.status_register.contains(StatusFlags::ZERO));
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_iny_sets_negative_flag() {
+    let mut cpu = CPU::new();
+    cpu.index_y = 0x7F; // 0x7F + 1 = 0x80, bit 7 set
+    cpu.load_and_run(vec![0xC8, 0x00]);
+    assert!(cpu.status_register.contains(StatusFlags::NEGATIVE));
+}
+
+// ===== DEY =====
+
+#[test]
+#[allow(non_snake_case)]
+fn test_0x88_dey() {
+    let mut cpu = CPU::new();
+    cpu.index_y = 0x20;
+    cpu.load_and_run(vec![0x88, 0x00]);
+    assert_eq!(cpu.index_y, 0x1F);
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_dey_wraps_around() {
+    let mut cpu = CPU::new();
+    cpu.index_y = 0x00;
+    cpu.load_and_run(vec![0x88, 0x00]);
+    assert_eq!(cpu.index_y, 0xFF);
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_dey_sets_zero_flag() {
+    let mut cpu = CPU::new();
+    cpu.index_y = 0x01;
+    cpu.load_and_run(vec![0x88, 0x00]);
+    assert!(cpu.status_register.contains(StatusFlags::ZERO));
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_dey_sets_negative_flag() {
+    let mut cpu = CPU::new();
+    cpu.index_y = 0x00; // 0x00 - 1 = 0xFF, bit 7 set
+    cpu.load_and_run(vec![0x88, 0x00]);
+    assert!(cpu.status_register.contains(StatusFlags::NEGATIVE));
+}

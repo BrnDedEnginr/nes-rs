@@ -193,6 +193,12 @@ impl CPU {
                 0xE9 | 0xE5 | 0xF5 | 0xED | 0xFD | 0xF9 | 0xE1 | 0xF1 => {
                     self.sbc(&instruction.addressing_mode)
                 }
+                0xE6 | 0xF6 | 0xEE | 0xFE => self.inc(&instruction.addressing_mode),
+                0xC6 | 0xD6 | 0xCE | 0xDE => self.dec(&instruction.addressing_mode),
+                0xE8 => self.inx(),
+                0xCA => self.dex(),
+                0xC8 => self.iny(),
+                0x88 => self.dey(),
                 0x00 => return,
                 _ => {
                     panic!("instruction {:#04x} unkown", opcode)
@@ -327,5 +333,45 @@ impl CPU {
         let addr = self.get_memory_address(addressing_mode);
         let value = self.memory.read(addr);
         self.add_to_register_a(((value as i8).wrapping_neg().wrapping_sub(1)) as u8);
+    }
+
+    fn inc(&mut self, addressing_mode: &AddressingMode) {
+        let addr = self.get_memory_address(addressing_mode);
+        let value = self.memory.read(addr).wrapping_add(1);
+        self.memory.write(addr, value);
+        self.update_zero_flag(value);
+        self.update_negative_flag(value);
+    }
+
+    fn dec(&mut self, addressing_mode: &AddressingMode) {
+        let addr = self.get_memory_address(addressing_mode);
+        let value = self.memory.read(addr).wrapping_sub(1);
+        self.memory.write(addr, value);
+        self.update_zero_flag(value);
+        self.update_negative_flag(value);
+    }
+
+    fn inx(&mut self) {
+        self.index_x = self.index_x.wrapping_add(1);
+        self.update_zero_flag(self.index_x);
+        self.update_negative_flag(self.index_x);
+    }
+
+    fn dex(&mut self) {
+        self.index_x = self.index_x.wrapping_sub(1);
+        self.update_zero_flag(self.index_x);
+        self.update_negative_flag(self.index_x);
+    }
+
+    fn iny(&mut self) {
+        self.index_y = self.index_y.wrapping_add(1);
+        self.update_zero_flag(self.index_y);
+        self.update_negative_flag(self.index_y);
+    }
+
+    fn dey(&mut self) {
+        self.index_y = self.index_y.wrapping_sub(1);
+        self.update_zero_flag(self.index_y);
+        self.update_negative_flag(self.index_y);
     }
 }
