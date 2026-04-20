@@ -190,6 +190,9 @@ impl CPU {
                 0x69 | 0x65 | 0x75 | 0x6D | 0x7D | 0x79 | 0x61 | 0x71 => {
                     self.adc(&instruction.addressing_mode)
                 }
+                0xE9 | 0xE5 | 0xF5 | 0xED | 0xFD | 0xF9 | 0xE1 | 0xF1 => {
+                    self.sbc(&instruction.addressing_mode)
+                }
                 0x00 => return,
                 _ => {
                     panic!("instruction {:#04x} unkown", opcode)
@@ -292,25 +295,37 @@ impl CPU {
         self.update_negative_flag(self.accumulator);
     }
 
-    fn adc(&mut self, addressing_mode: &AddressingMode) {
-        let addr = self.get_memory_address(addressing_mode);
-        let value = self.memory.read(addr);
-        let temp_a = self.accumulator;
+    fn add_to_register_a(&mut self, data: u8) {
+        let mut result = self.accumulator as u16 + data as u16;
 
-        let mut result = self.accumulator as u16 + value as u16;
         if self.status_register.contains(StatusFlags::CARRY) {
             result += 1;
         }
-
         self.update_carry_flag(result);
 
-        if (result ^ temp_a as u16) & (result ^ value as u16) & 0x80 != 0 {
+        let result = result as u8;
+
+        if (result ^ self.accumulator) & (result ^ data) & 0x80 != 0 {
             self.status_register.insert(StatusFlags::OVERFLOW);
+        } else {
+            self.status_register.remove(StatusFlags::OVERFLOW);
         }
 
-        self.accumulator = result as u8;
+        self.accumulator = result;
 
         self.update_zero_flag(self.accumulator);
         self.update_negative_flag(self.accumulator);
+    }
+
+    fn adc(&mut self, addressing_mode: &AddressingMode) {
+        let addr = self.get_memory_address(addressing_mode);
+        let value = self.memory.read(addr);
+        self.add_to_register_a(value);
+    }
+
+    fn sbc(&mut self, addressing_mode: &AddressingMode) {
+        let addr = self.get_memory_address(addressing_mode);
+        let value = self.memory.read(addr);
+        self.add_to_register_a(((value as i8).wrapping_neg().wrapping_sub(1)) as u8);
     }
 }
