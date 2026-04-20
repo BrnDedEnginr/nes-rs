@@ -201,6 +201,8 @@ impl CPU {
                 0x88 => self.dey(),
                 0x0A | 0x06 | 0x16 | 0x0E | 0x1E => self.asl(&instruction.addressing_mode),
                 0x4A | 0x46 | 0x56 | 0x4E | 0x5E => self.lsr(&instruction.addressing_mode),
+                0x2A | 0x26 | 0x36 | 0x2E | 0x3E => self.rol(&instruction.addressing_mode),
+                0x6A | 0x66 | 0x76 | 0x6E | 0x7E => self.ror(&instruction.addressing_mode),
                 0x00 => return,
                 _ => {
                     panic!("instruction {:#04x} unkown", opcode)
@@ -419,6 +421,52 @@ impl CPU {
             }
         }
 
+        self.status_register
+            .set(StatusFlags::CARRY, value & 0x01 != 0);
+        self.update_negative_flag(result);
+        self.update_zero_flag(result);
+    }
+
+    fn rol(&mut self, addressing_mode: &AddressingMode) {
+        let addr = self.get_memory_address(addressing_mode);
+        let value = match addressing_mode {
+            AddressingMode::Accumulator => self.accumulator,
+            _ => self.memory.read(addr),
+        };
+        let old_carry = self.status_register.contains(StatusFlags::CARRY) as u8;
+        let result = (value << 1) | old_carry;
+        match addressing_mode {
+            AddressingMode::Accumulator => {
+                self.accumulator = result;
+            }
+            _ => {
+                self.memory.write(addr, value);
+                self.memory.write(addr, result);
+            }
+        }
+        self.status_register
+            .set(StatusFlags::CARRY, value & 0x80 != 0);
+        self.update_negative_flag(result);
+        self.update_zero_flag(result);
+    }
+
+    fn ror(&mut self, addressing_mode: &AddressingMode) {
+        let addr = self.get_memory_address(addressing_mode);
+        let value = match addressing_mode {
+            AddressingMode::Accumulator => self.accumulator,
+            _ => self.memory.read(addr),
+        };
+        let old_carry = self.status_register.contains(StatusFlags::CARRY) as u8;
+        let result = (value >> 1) | (old_carry << 7);
+        match addressing_mode {
+            AddressingMode::Accumulator => {
+                self.accumulator = result;
+            }
+            _ => {
+                self.memory.write(addr, value);
+                self.memory.write(addr, result);
+            }
+        }
         self.status_register
             .set(StatusFlags::CARRY, value & 0x01 != 0);
         self.update_negative_flag(result);

@@ -915,3 +915,177 @@ fn test_lsr_zero_page_sets_carry() {
     assert_eq!(cpu.memory.read(0x10), 0x00);
     assert!(cpu.status_register.contains(StatusFlags::CARRY));
 }
+// ===== ROL =====
+// ROL: C <- [76543210] <- C
+// old carry feeds into bit 0, bit 7 goes into new carry
+
+#[test]
+#[allow(non_snake_case)]
+fn test_0x2A_rol_accumulator() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0x10;
+    cpu.load_and_run(vec![0x2A, 0x00]);
+    assert_eq!(cpu.accumulator, 0x20); // simple shift left, carry was clear
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_rol_feeds_carry_into_bit_0() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0x10;
+    cpu.status_register.insert(StatusFlags::CARRY); // old carry = 1
+    cpu.load_and_run(vec![0x2A, 0x00]);
+    assert_eq!(cpu.accumulator, 0x21); // 0x10 << 1 = 0x20, bit 0 gets old carry = 0x21
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_rol_sets_carry_from_bit_7() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0x80; // bit 7 set, goes into carry
+    cpu.load_and_run(vec![0x2A, 0x00]);
+    assert_eq!(cpu.accumulator, 0x00); // 0x80 << 1 = 0x00, carry was clear so bit 0 = 0
+    assert!(cpu.status_register.contains(StatusFlags::CARRY));
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_rol_clears_carry_when_bit_7_clear() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0x10; // bit 7 clear
+    cpu.status_register.insert(StatusFlags::CARRY); // carry set before, should clear
+    cpu.load_and_run(vec![0x2A, 0x00]);
+    assert_eq!(cpu.accumulator, 0x21);
+    assert!(!cpu.status_register.contains(StatusFlags::CARRY));
+}
+
+// full rotation - bit 7 goes to carry, old carry comes into bit 0
+#[test]
+#[allow(non_snake_case)]
+fn test_rol_full_rotation() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0x81; // bit 7 and bit 0 set
+    cpu.status_register.insert(StatusFlags::CARRY);
+    cpu.load_and_run(vec![0x2A, 0x00]);
+    assert_eq!(cpu.accumulator, 0x03); // 0x81 << 1 = 0x02, old carry into bit 0 = 0x03
+    assert!(cpu.status_register.contains(StatusFlags::CARRY)); // bit 7 was set
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_rol_sets_zero_flag() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0x80; // 0x80 << 1 = 0x00, carry was clear
+    cpu.load_and_run(vec![0x2A, 0x00]);
+    assert_eq!(cpu.accumulator, 0x00);
+    assert!(cpu.status_register.contains(StatusFlags::ZERO));
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_rol_sets_negative_flag() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0x40; // 0x40 << 1 = 0x80, bit 7 set
+    cpu.load_and_run(vec![0x2A, 0x00]);
+    assert_eq!(cpu.accumulator, 0x80);
+    assert!(cpu.status_register.contains(StatusFlags::NEGATIVE));
+}
+
+// memory mode spot check
+#[test]
+#[allow(non_snake_case)]
+fn test_0x26_rol_zero_page() {
+    let mut cpu = CPU::new();
+    cpu.memory.write(0x10, 0x10);
+    cpu.status_register.insert(StatusFlags::CARRY);
+    cpu.load_and_run(vec![0x26, 0x10, 0x00]);
+    assert_eq!(cpu.memory.read(0x10), 0x21); // 0x10 << 1 = 0x20, carry into bit 0 = 0x21
+}
+
+// ===== ROR =====
+// ROR: C -> [76543210] -> C
+// old carry feeds into bit 7, bit 0 goes into new carry
+
+#[test]
+#[allow(non_snake_case)]
+fn test_0x6A_ror_accumulator() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0x20;
+    cpu.load_and_run(vec![0x6A, 0x00]);
+    assert_eq!(cpu.accumulator, 0x10); // simple shift right, carry was clear
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_ror_feeds_carry_into_bit_7() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0x20;
+    cpu.status_register.insert(StatusFlags::CARRY); // old carry = 1
+    cpu.load_and_run(vec![0x6A, 0x00]);
+    assert_eq!(cpu.accumulator, 0x90); // 0x20 >> 1 = 0x10, old carry into bit 7 = 0x90
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_ror_sets_carry_from_bit_0() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0x01; // bit 0 set, goes into carry
+    cpu.load_and_run(vec![0x6A, 0x00]);
+    assert_eq!(cpu.accumulator, 0x00); // 0x01 >> 1 = 0x00, carry was clear so bit 7 = 0
+    assert!(cpu.status_register.contains(StatusFlags::CARRY));
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_ror_clears_carry_when_bit_0_clear() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0x20; // bit 0 clear
+    cpu.status_register.insert(StatusFlags::CARRY); // carry set before, should clear
+    cpu.load_and_run(vec![0x6A, 0x00]);
+    assert_eq!(cpu.accumulator, 0x90); // old carry fed into bit 7
+    assert!(!cpu.status_register.contains(StatusFlags::CARRY));
+}
+
+// full rotation - bit 0 goes to carry, old carry comes into bit 7
+#[test]
+#[allow(non_snake_case)]
+fn test_ror_full_rotation() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0x81; // bit 7 and bit 0 set
+    cpu.status_register.insert(StatusFlags::CARRY);
+    cpu.load_and_run(vec![0x6A, 0x00]);
+    assert_eq!(cpu.accumulator, 0xC0); // 0x81 >> 1 = 0x40, old carry into bit 7 = 0xC0
+    assert!(cpu.status_register.contains(StatusFlags::CARRY)); // bit 0 was set
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_ror_sets_zero_flag() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0x01; // 0x01 >> 1 = 0x00, carry was clear so bit 7 = 0
+    cpu.load_and_run(vec![0x6A, 0x00]);
+    assert_eq!(cpu.accumulator, 0x00);
+    assert!(cpu.status_register.contains(StatusFlags::ZERO));
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn test_ror_sets_negative_flag() {
+    let mut cpu = CPU::new();
+    cpu.accumulator = 0x00;
+    cpu.status_register.insert(StatusFlags::CARRY); // carry feeds into bit 7
+    cpu.load_and_run(vec![0x6A, 0x00]);
+    assert_eq!(cpu.accumulator, 0x80); // bit 7 set from old carry
+    assert!(cpu.status_register.contains(StatusFlags::NEGATIVE));
+}
+
+// memory mode spot check
+#[test]
+#[allow(non_snake_case)]
+fn test_0x66_ror_zero_page() {
+    let mut cpu = CPU::new();
+    cpu.memory.write(0x10, 0x20);
+    cpu.status_register.insert(StatusFlags::CARRY);
+    cpu.load_and_run(vec![0x66, 0x10, 0x00]);
+    assert_eq!(cpu.memory.read(0x10), 0x90); // 0x20 >> 1 = 0x10, carry into bit 7 = 0x90
+}
